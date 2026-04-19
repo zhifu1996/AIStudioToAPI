@@ -37,6 +37,58 @@ class FormatConverter {
     };
 
     /**
+     * Parse web search suffix from model name.
+     * Only supports the LAST hyphen token: `-search` (case-insensitive).
+     *
+     * Examples:
+     * - gemini-3-flash-preview-minimal-search -> { cleanModelName: "gemini-3-flash-preview-minimal", forceWebSearch: true }
+     * - gemini-3-flash-preview-search-minimal -> no match (search suffix must be last)
+     *
+     * @param {string} modelName - Original model name
+     * @returns {{ cleanModelName: string, forceWebSearch: boolean }}
+     */
+    static parseModelWebSearchSuffix(modelName) {
+        if (!modelName || typeof modelName !== "string") {
+            return { cleanModelName: modelName, forceWebSearch: false };
+        }
+
+        const match = modelName.match(/^(.+)-search$/i);
+        if (!match) {
+            return { cleanModelName: modelName, forceWebSearch: false };
+        }
+
+        return { cleanModelName: match[1], forceWebSearch: true };
+    }
+
+    /**
+     * Parse streaming mode suffix from model name.
+     * Only matches a trailing `-real` or `-fake` (case-insensitive).
+     * Callers should strip any trailing `-search` suffix before invoking this helper, so the
+     * combined suffix order remains: thinking -> streaming -> search.
+     *
+     * Examples:
+     * - gemini-3-flash-preview-minimal-fake -> { cleanModelName: "gemini-3-flash-preview-minimal", streamingMode: "fake" }
+     * - gemini-3-flash-preview(minimal)-fake -> { cleanModelName: "gemini-3-flash-preview(minimal)", streamingMode: "fake" }
+     * - gemini-3-flash-preview-fake-minimal -> no match (thinking must come before streaming)
+     * - gemini-3-flash-preview(minimal)-fake-search -> no direct match here; callers strip `-search` first
+     *
+     * @param {string} modelName - Original model name
+     * @returns {{ cleanModelName: string, streamingMode: ("real"|"fake"|null) }}
+     */
+    static parseModelStreamingModeSuffix(modelName) {
+        if (!modelName || typeof modelName !== "string") {
+            return { cleanModelName: modelName, streamingMode: null };
+        }
+
+        const match = modelName.match(/^(.+)-(real|fake)$/i);
+        if (!match) {
+            return { cleanModelName: modelName, streamingMode: null };
+        }
+
+        return { cleanModelName: match[1], streamingMode: match[2].toLowerCase() };
+    }
+
+    /**
      * Parse thinkingLevel suffix from model name
      * Supports two formats:
      *   - Parenthesis format: gemini-3-flash-preview(minimal), gemini-3-pro-preview(high)
@@ -122,7 +174,7 @@ class FormatConverter {
                     if (!signatureAdded) {
                         part.thoughtSignature = DUMMY_SIGNATURE;
                         signatureAdded = true;
-                        this.logger.info(
+                        this.logger.debug(
                             `[Adapter] Added dummy thoughtSignature for functionCall: ${part.functionCall.name}`
                         );
                     }
@@ -146,6 +198,28 @@ class FormatConverter {
                         Object.prototype.hasOwnProperty.call(tool, toolKey)
                     )
             )
+        );
+    }
+
+    static hasGeminiToolKey(tool, keys) {
+        return !!(
+            tool &&
+            typeof tool === "object" &&
+            keys.some(toolKey => Object.prototype.hasOwnProperty.call(tool, toolKey))
+        );
+    }
+
+    static hasGeminiGoogleSearchTool(tools) {
+        return (
+            Array.isArray(tools) &&
+            tools.some(tool => FormatConverter.hasGeminiToolKey(tool, ["googleSearch", "google_search"]))
+        );
+    }
+
+    static hasGeminiUrlContextTool(tools) {
+        return (
+            Array.isArray(tools) &&
+            tools.some(tool => FormatConverter.hasGeminiToolKey(tool, ["urlContext", "url_context"]))
         );
     }
 
@@ -395,23 +469,43 @@ class FormatConverter {
     /**
      * Convert OpenAI request format to Google Gemini format
      * @param {object} openaiBody - OpenAI format request body
-     * @returns {Promise<{ googleRequest: object, cleanModelName: string }>} - Converted request and cleaned model name
+     * @returns {Promise<{ googleRequest: object, cleanModelName: string, modelStreamingMode: ("real"|"fake"|null) }>}
+     *          - modelStreamingMode: Streaming mode override parsed from model name suffix, or null
      */
     async translateOpenAIToGoogle(openaiBody) {
         this.logger.info("[Adapter] Starting translation of OpenAI request format to Google format...");
 
-        // Parse thinkingLevel suffix from model name (e.g., gemini-3-flash-preview-minimal or gemini-3-flash-preview(low))
-        const rawModel = openaiBody.model || "gemini-2.5-flash-lite";
-        const { cleanModelName, thinkingLevel: modelThinkingLevel } = FormatConverter.parseModelThinkingLevel(rawModel);
-
-        if (modelThinkingLevel) {
-            this.logger.info(
-                `[Adapter] Detected thinkingLevel suffix in model name: "${rawModel}" -> model="${cleanModelName}", thinkingLevel="${modelThinkingLevel}"`
-            );
-        }
-
         // [DEBUG] Log incoming messages for troubleshooting
         this.logger.debug(`[Adapter] Debug: incoming OpenAI Body = ${JSON.stringify(openaiBody, null, 2)}`);
+
+        // Parse model suffixes in reverse stripping order:
+        // 1) web search override: only trailing `-search`
+        // 2) streaming override: trailing `-real` / `-fake` after any thinking suffix
+        // 3) thinkingLevel override: trailing `-minimal` / `(minimal)` etc.
+        // Combined user-facing suffix order: thinking -> streaming -> search
+        const rawModel = openaiBody.model || "gemini-2.5-flash-lite";
+        const { cleanModelName: searchStrippedModel, forceWebSearch: modelForceWebSearch } =
+            FormatConverter.parseModelWebSearchSuffix(rawModel);
+        const { cleanModelName: streamStrippedModel, streamingMode: modelStreamingMode } =
+            FormatConverter.parseModelStreamingModeSuffix(searchStrippedModel);
+        const { cleanModelName, thinkingLevel: modelThinkingLevel } =
+            FormatConverter.parseModelThinkingLevel(streamStrippedModel);
+
+        if (modelForceWebSearch) {
+            this.logger.info(
+                `[Adapter] Detected webSearch suffix in model name: "${rawModel}" -> model="${searchStrippedModel}", forceWebSearch=true`
+            );
+        }
+        if (modelStreamingMode) {
+            this.logger.info(
+                `[Adapter] Detected streamingMode suffix in model name: "${searchStrippedModel}" -> model="${streamStrippedModel}", streamingMode="${modelStreamingMode}"`
+            );
+        }
+        if (modelThinkingLevel) {
+            this.logger.info(
+                `[Adapter] Detected thinkingLevel suffix in model name: "${streamStrippedModel}" -> model="${cleanModelName}", thinkingLevel="${modelThinkingLevel}"`
+            );
+        }
 
         let systemInstruction = null;
         const googleContents = [];
@@ -707,11 +801,10 @@ class FormatConverter {
             }
         }
 
-        // Force thinking mode
-        if (this.serverSystem.forceThinking && !thinkingConfig) {
-            this.logger.info("[Adapter] ⚠️ Force thinking enabled, injecting thinkingConfig for OpenAI request.");
-
-            thinkingConfig = { includeThoughts: true };
+        // Force thinking mode (only set includeThoughts=true when missing)
+        if (this.serverSystem.forceThinking && (!thinkingConfig || thinkingConfig.includeThoughts === undefined)) {
+            this.logger.info("[Adapter] ⚠️ Force thinking enabled, setting includeThoughts=true for OpenAI request.");
+            thinkingConfig = { ...(thinkingConfig || {}), includeThoughts: true };
         }
 
         // If model name suffix specifies thinkingLevel, override directly (highest priority)
@@ -720,9 +813,7 @@ class FormatConverter {
                 thinkingConfig = {};
             }
             thinkingConfig.thinkingLevel = modelThinkingLevel;
-            this.logger.info(
-                `[Adapter] Applied thinkingLevel from model name suffix: ${modelThinkingLevel} (overriding any existing value)`
-            );
+            this.logger.info(`[Adapter] Applied thinkingLevel from model name suffix: ${modelThinkingLevel}`);
         }
 
         if (thinkingConfig) {
@@ -840,9 +931,9 @@ class FormatConverter {
             }
         }
 
-        this._finalizeGoogleRequest(googleRequest);
+        this._finalizeGoogleRequest(googleRequest, { forceWebSearch: modelForceWebSearch });
         this.logger.info("[Adapter] OpenAI to Google translation complete.");
-        return { cleanModelName, googleRequest };
+        return { cleanModelName, googleRequest, modelStreamingMode };
     }
 
     /**
@@ -851,11 +942,20 @@ class FormatConverter {
      * 2. Apply safety settings
      * 3. Log final request body
      * @param {object} googleRequest - The Gemini request object to finalize
+     * @param {object} [options={}] - Per-request tool injection overrides.
+     * @param {boolean} [options.forceWebSearch] - When truthy, force-enable `googleSearch` for this request even
+     * if `serverSystem.forceWebSearch` is disabled. Falsy values fall back to the global setting. Current callers
+     * use this for model-name-driven overrides such as the `-search` suffix.
+     * @param {boolean} [options.forceUrlContext] - When truthy, force-enable `urlContext` for this request even if
+     * `serverSystem.forceUrlContext` is disabled. Falsy values fall back to the global setting.
      * @private
      */
-    _finalizeGoogleRequest(googleRequest) {
+    _finalizeGoogleRequest(googleRequest, options = {}) {
+        const forceWebSearch = options.forceWebSearch || this.serverSystem.forceWebSearch;
+        const forceUrlContext = options.forceUrlContext || this.serverSystem.forceUrlContext;
+
         // Force web search and URL context
-        if (this.serverSystem.forceWebSearch || this.serverSystem.forceUrlContext) {
+        if (forceWebSearch || forceUrlContext) {
             if (!googleRequest.tools) {
                 googleRequest.tools = [];
             }
@@ -863,8 +963,8 @@ class FormatConverter {
             const toolsToAdd = [];
 
             // Handle Google Search
-            if (this.serverSystem.forceWebSearch) {
-                const hasSearch = googleRequest.tools.some(t => t.googleSearch);
+            if (forceWebSearch) {
+                const hasSearch = FormatConverter.hasGeminiGoogleSearchTool(googleRequest.tools);
                 if (!hasSearch) {
                     googleRequest.tools.push({ googleSearch: {} });
                     toolsToAdd.push("googleSearch");
@@ -872,8 +972,8 @@ class FormatConverter {
             }
 
             // Handle URL Context
-            if (this.serverSystem.forceUrlContext) {
-                const hasUrlContext = googleRequest.tools.some(t => t.urlContext);
+            if (forceUrlContext) {
+                const hasUrlContext = FormatConverter.hasGeminiUrlContextTool(googleRequest.tools);
                 if (!hasUrlContext) {
                     googleRequest.tools.push({ urlContext: {} });
                     toolsToAdd.push("urlContext");
@@ -1921,23 +2021,43 @@ class FormatConverter {
     /**
      * Convert Claude API request format to Google Gemini format
      * @param {object} claudeBody - Claude API format request body
-     * @returns {Promise<{ googleRequest: object, cleanModelName: string }>} - Converted request and cleaned model name
+     * @returns {Promise<{ googleRequest: object, cleanModelName: string, modelStreamingMode: ("real"|"fake"|null) }>}
+     *          - modelStreamingMode: Streaming mode override parsed from model name suffix, or null
      */
     async translateClaudeToGoogle(claudeBody) {
         this.logger.info("[Adapter] Starting translation of Claude request format to Google format...");
 
-        // Parse thinkingLevel suffix from model name
-        const rawModel = claudeBody.model || "gemini-2.5-flash-lite";
-        const { cleanModelName, thinkingLevel: modelThinkingLevel } = FormatConverter.parseModelThinkingLevel(rawModel);
-
-        if (modelThinkingLevel) {
-            this.logger.info(
-                `[Adapter] Detected thinkingLevel suffix in model name: "${rawModel}" -> model="${cleanModelName}", thinkingLevel="${modelThinkingLevel}"`
-            );
-        }
-
         // [DEBUG] Log incoming messages
         this.logger.debug(`[Adapter] Debug: incoming Claude Body = ${JSON.stringify(claudeBody, null, 2)}`);
+
+        // Parse model suffixes in reverse stripping order:
+        // 1) web search override: only trailing `-search`
+        // 2) streaming override: trailing `-real` / `-fake` after any thinking suffix
+        // 3) thinkingLevel override: trailing `-minimal` / `(minimal)` etc.
+        // Combined user-facing suffix order: thinking -> streaming -> search
+        const rawModel = claudeBody.model || "gemini-2.5-flash-lite";
+        const { cleanModelName: searchStrippedModel, forceWebSearch: modelForceWebSearch } =
+            FormatConverter.parseModelWebSearchSuffix(rawModel);
+        const { cleanModelName: streamStrippedModel, streamingMode: modelStreamingMode } =
+            FormatConverter.parseModelStreamingModeSuffix(searchStrippedModel);
+        const { cleanModelName, thinkingLevel: modelThinkingLevel } =
+            FormatConverter.parseModelThinkingLevel(streamStrippedModel);
+
+        if (modelForceWebSearch) {
+            this.logger.info(
+                `[Adapter] Detected webSearch suffix in model name: "${rawModel}" -> model="${searchStrippedModel}", forceWebSearch=true`
+            );
+        }
+        if (modelStreamingMode) {
+            this.logger.info(
+                `[Adapter] Detected streamingMode suffix in model name: "${searchStrippedModel}" -> model="${streamStrippedModel}", streamingMode="${modelStreamingMode}"`
+            );
+        }
+        if (modelThinkingLevel) {
+            this.logger.info(
+                `[Adapter] Detected thinkingLevel suffix in model name: "${streamStrippedModel}" -> model="${cleanModelName}", thinkingLevel="${modelThinkingLevel}"`
+            );
+        }
 
         let systemInstruction = null;
         const googleContents = [];
@@ -2182,10 +2302,10 @@ class FormatConverter {
             }
         }
 
-        // Force thinking mode
-        if (this.serverSystem.forceThinking && !thinkingConfig) {
-            this.logger.info("[Adapter] ⚠️ Force thinking enabled, injecting thinkingConfig for Claude request.");
-            thinkingConfig = { includeThoughts: true };
+        // Force thinking mode (only set includeThoughts=true when missing)
+        if (this.serverSystem.forceThinking && (!thinkingConfig || thinkingConfig.includeThoughts === undefined)) {
+            this.logger.info("[Adapter] ⚠️ Force thinking enabled, setting includeThoughts=true for Claude request.");
+            thinkingConfig = { ...(thinkingConfig || {}), includeThoughts: true };
         }
 
         // Apply model name suffix thinkingLevel
@@ -2294,7 +2414,7 @@ class FormatConverter {
             // If web search tool was found, ensure googleSearch is added to tools
             if (hasWebSearchTool) {
                 if (!googleRequest.tools) googleRequest.tools = [];
-                if (!googleRequest.tools.some(t => t.googleSearch)) {
+                if (!FormatConverter.hasGeminiGoogleSearchTool(googleRequest.tools)) {
                     googleRequest.tools.push({ googleSearch: {} });
                 }
             }
@@ -2302,7 +2422,7 @@ class FormatConverter {
             // If web fetch tool was found, ensure urlContext is added to tools
             if (hasUrlContextTool) {
                 if (!googleRequest.tools) googleRequest.tools = [];
-                if (!googleRequest.tools.some(t => t.urlContext)) {
+                if (!FormatConverter.hasGeminiUrlContextTool(googleRequest.tools)) {
                     googleRequest.tools.push({ urlContext: {} });
                 }
             }
@@ -2336,9 +2456,9 @@ class FormatConverter {
             );
         }
 
-        this._finalizeGoogleRequest(googleRequest);
+        this._finalizeGoogleRequest(googleRequest, { forceWebSearch: modelForceWebSearch });
         this.logger.info("[Adapter] Claude to Google translation complete.");
-        return { cleanModelName, googleRequest };
+        return { cleanModelName, googleRequest, modelStreamingMode };
     }
 
     /**
@@ -2684,24 +2804,44 @@ class FormatConverter {
      * Convert OpenAI Response API request format to Google Gemini format
      * Response API uses different structure: input instead of messages, instructions instead of system message
      * @param {object} responseBody - OpenAI Response API format request body
-     * @returns {Promise<{ googleRequest: object, cleanModelName: string }>} - Converted request and cleaned model name
+     * @returns {Promise<{ googleRequest: object, cleanModelName: string, modelStreamingMode: ("real"|"fake"|null) }>}
+     *          - modelStreamingMode: Streaming mode override parsed from model name suffix, or null
      */
     async translateOpenAIResponseToGoogle(responseBody) {
         this.logger.info("[Adapter] Starting translation of OpenAI Response API request format to Google format...");
 
-        // Parse thinkingLevel suffix from model name
-        const rawModel = responseBody.model || "gemini-2.5-flash-lite";
-        const { cleanModelName, thinkingLevel: modelThinkingLevel } = FormatConverter.parseModelThinkingLevel(rawModel);
-
-        if (modelThinkingLevel) {
-            this.logger.info(
-                `[Adapter] Detected thinkingLevel suffix in model name: "${rawModel}" -> model="${cleanModelName}", thinkingLevel="${modelThinkingLevel}"`
-            );
-        }
-
         this.logger.debug(
             `[Adapter] Debug: incoming OpenAI Response API Body = ${JSON.stringify(responseBody, null, 2)}`
         );
+
+        // Parse model suffixes in reverse stripping order:
+        // 1) web search override: only trailing `-search`
+        // 2) streaming override: trailing `-real` / `-fake` after any thinking suffix
+        // 3) thinkingLevel override: trailing `-minimal` / `(minimal)` etc.
+        // Combined user-facing suffix order: thinking -> streaming -> search
+        const rawModel = responseBody.model || "gemini-2.5-flash-lite";
+        const { cleanModelName: searchStrippedModel, forceWebSearch: modelForceWebSearch } =
+            FormatConverter.parseModelWebSearchSuffix(rawModel);
+        const { cleanModelName: streamStrippedModel, streamingMode: modelStreamingMode } =
+            FormatConverter.parseModelStreamingModeSuffix(searchStrippedModel);
+        const { cleanModelName, thinkingLevel: modelThinkingLevel } =
+            FormatConverter.parseModelThinkingLevel(streamStrippedModel);
+
+        if (modelForceWebSearch) {
+            this.logger.info(
+                `[Adapter] Detected webSearch suffix in model name: "${rawModel}" -> model="${searchStrippedModel}", forceWebSearch=true`
+            );
+        }
+        if (modelStreamingMode) {
+            this.logger.info(
+                `[Adapter] Detected streamingMode suffix in model name: "${searchStrippedModel}" -> model="${streamStrippedModel}", streamingMode="${modelStreamingMode}"`
+            );
+        }
+        if (modelThinkingLevel) {
+            this.logger.info(
+                `[Adapter] Detected thinkingLevel suffix in model name: "${streamStrippedModel}" -> model="${cleanModelName}", thinkingLevel="${modelThinkingLevel}"`
+            );
+        }
 
         const googleContents = [];
         let systemInstructionText = "";
@@ -2960,12 +3100,12 @@ class FormatConverter {
             thinkingConfig = { includeThoughts: true };
         }
 
-        // Force thinking mode
-        if (this.serverSystem.forceThinking && !thinkingConfig) {
+        // Force thinking mode (only set includeThoughts=true when missing)
+        if (this.serverSystem.forceThinking && (!thinkingConfig || thinkingConfig.includeThoughts === undefined)) {
             this.logger.info(
-                "[Adapter] ⚠️ Force thinking enabled, injecting thinkingConfig for OpenAI Response API request."
+                "[Adapter] ⚠️ Force thinking enabled, setting includeThoughts=true for OpenAI Response API request."
             );
-            thinkingConfig = { includeThoughts: true };
+            thinkingConfig = { ...(thinkingConfig || {}), includeThoughts: true };
         }
 
         // If model name suffix specifies thinkingLevel, override directly (highest priority)
@@ -2974,9 +3114,7 @@ class FormatConverter {
                 thinkingConfig = {};
             }
             thinkingConfig.thinkingLevel = modelThinkingLevel;
-            this.logger.info(
-                `[Adapter] Applied thinkingLevel from model name suffix: ${modelThinkingLevel} (overriding any existing value)`
-            );
+            this.logger.info(`[Adapter] Applied thinkingLevel from model name suffix: ${modelThinkingLevel}`);
         }
 
         if (thinkingConfig) {
@@ -3046,8 +3184,10 @@ class FormatConverter {
                 if (!googleRequest.tools) {
                     googleRequest.tools = [];
                 }
-                googleRequest.tools.push({ googleSearch: {} });
-                this.logger.info("[Adapter] Added googleSearch tool for OpenAI Response API web_search_preview");
+                if (!FormatConverter.hasGeminiGoogleSearchTool(googleRequest.tools)) {
+                    googleRequest.tools.push({ googleSearch: {} });
+                    this.logger.info("[Adapter] Added googleSearch tool for OpenAI Response API web_search_preview");
+                }
             }
         }
 
@@ -3057,11 +3197,7 @@ class FormatConverter {
 
             const ensureGoogleSearchTool = () => {
                 if (!googleRequest.tools) googleRequest.tools = [];
-                if (
-                    !googleRequest.tools.some(
-                        t => t && typeof t === "object" && Object.prototype.hasOwnProperty.call(t, "googleSearch")
-                    )
-                ) {
+                if (!FormatConverter.hasGeminiGoogleSearchTool(googleRequest.tools)) {
                     googleRequest.tools.push({ googleSearch: {} });
                 }
             };
@@ -3147,19 +3283,18 @@ class FormatConverter {
             const formatType =
                 typeof textFormat.format === "string" ? textFormat.format : textFormat.format?.type || null;
 
-            if (
-                formatType === "json_schema" &&
-                typeof textFormat.format === "object" &&
-                textFormat.format.json_schema
-            ) {
-                const schema = textFormat.format.json_schema.schema;
+            if (formatType === "json_schema" && typeof textFormat.format === "object") {
+                // Follow the official Response API shape:
+                // text.format = { type: "json_schema", name, schema, strict }
+                const jsonSchemaConfig = textFormat.format;
+                const schema = jsonSchemaConfig.schema;
                 if (schema) {
                     try {
                         const convertedSchema = this._convertSchemaToGemini(schema, true);
                         generationConfig.responseMimeType = "application/json";
                         generationConfig.responseSchema = convertedSchema;
                         this.logger.info(
-                            `[Adapter] Converted OpenAI Response API text.format to Gemini responseSchema: ${textFormat.format.json_schema.name || "unnamed"}`
+                            `[Adapter] Converted OpenAI Response API text.format to Gemini responseSchema: ${jsonSchemaConfig.name || "unnamed"}`
                         );
                     } catch (error) {
                         this.logger.error(
@@ -3176,9 +3311,9 @@ class FormatConverter {
             }
         }
 
-        this._finalizeGoogleRequest(googleRequest);
+        this._finalizeGoogleRequest(googleRequest, { forceWebSearch: modelForceWebSearch });
         this.logger.info("[Adapter] OpenAI Response API to Google translation complete.");
-        return { cleanModelName, googleRequest };
+        return { cleanModelName, googleRequest, modelStreamingMode };
     }
 }
 
