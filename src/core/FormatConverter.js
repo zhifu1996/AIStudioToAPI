@@ -137,6 +137,16 @@ class FormatConverter {
         this.serverSystem = serverSystem;
     }
 
+    getDefaultSafetySettings() {
+        const threshold = this.serverSystem?.config?.safetySettingsThreshold || "OFF";
+        return [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold },
+        ];
+    }
+
     normalizeImageUrl(imageSource) {
         if (typeof imageSource === "string") {
             return imageSource;
@@ -282,20 +292,6 @@ class FormatConverter {
             const result = Array.isArray(obj) ? [] : {};
 
             for (const key of Object.keys(obj)) {
-                // Skip fields not supported by Gemini API
-                const unsupportedKeys = [
-                    "$schema",
-                    "additionalProperties",
-                    "ref",
-                    "$ref",
-                    "propertyNames",
-                    "patternProperties",
-                    "unevaluatedProperties",
-                ];
-                if (unsupportedKeys.includes(key)) {
-                    continue;
-                }
-
                 if (key === "type" && typeof obj[key] === "string") {
                     // Convert lowercase type to uppercase for Gemini
                     result[key] = obj[key].toUpperCase();
@@ -354,6 +350,8 @@ class FormatConverter {
                 "exclusiveMinimum",
                 "exclusiveMaximum",
                 "const",
+                "$comment",
+                "enumDescriptions",
             ];
 
             if (isResponseSchema) {
@@ -460,6 +458,28 @@ class FormatConverter {
                 result[key] = this._convertSchemaToGemini(obj[key], isResponseSchema, recursionFlag);
             } else {
                 result[key] = obj[key];
+            }
+        }
+
+        if (!isProperties && Array.isArray(obj.enumDescriptions) && obj.enumDescriptions.length > 0) {
+            const enumValues = Array.isArray(result.enum) ? result.enum : [];
+            const enumDescriptionLines = obj.enumDescriptions
+                .map((description, index) => {
+                    if (description === undefined || description === null || description === "") {
+                        return null;
+                    }
+
+                    const enumValue = enumValues[index];
+                    const label = enumValue === undefined ? `value ${index + 1}` : String(enumValue);
+                    return `- ${label}: ${description}`;
+                })
+                .filter(Boolean);
+
+            if (enumDescriptionLines.length > 0) {
+                const enumDescriptionText = `Enum descriptions:\n${enumDescriptionLines.join("\n")}`;
+                result.description = result.description
+                    ? `${result.description}\n\n${enumDescriptionText}`
+                    : enumDescriptionText;
             }
         }
 
@@ -937,6 +957,30 @@ class FormatConverter {
     }
 
     /**
+     * Convert OpenAI embeddings request format to Google's OpenAI-compatible embeddings endpoint.
+     * @param {object} openaiBody - OpenAI embeddings request body
+     * @returns {{ googleRequest: object, cleanModelName: string|null, path: string }}
+     */
+    translateOpenAIEmbeddingsToGoogle(openaiBody) {
+        this.logger.debug(
+            "[Adapter] Starting translation of OpenAI embeddings request format to Google OpenAI-compatible format..."
+        );
+
+        const googleRequest = openaiBody && typeof openaiBody === "object" ? openaiBody : {};
+        const rawModelName = typeof googleRequest.model === "string" ? googleRequest.model : null;
+        const cleanModelName = rawModelName ? rawModelName.replace(/^models\//, "") : null;
+        const path = "/v1beta/openai/embeddings";
+
+        this.logger.debug(
+            `[Adapter] Debug: incoming OpenAI Embeddings Body = ${JSON.stringify(googleRequest, null, 2)}`
+        );
+        this.logger.debug(`[Adapter] Debug: Final Google OpenAI-compatible Embeddings Path = ${path}`);
+        this.logger.debug("[Adapter] OpenAI embeddings to Google OpenAI-compatible translation complete.");
+
+        return { cleanModelName, googleRequest, path };
+    }
+
+    /**
      * Common final processing for Gemini requests:
      * 1. Inject force features (Search, URL Context)
      * 2. Apply safety settings
@@ -988,12 +1032,7 @@ class FormatConverter {
         this.ensureServerSideToolInvocations(googleRequest);
 
         // Safety settings
-        googleRequest.safetySettings = [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        ];
+        googleRequest.safetySettings = this.getDefaultSafetySettings();
 
         this.logger.debug(`[Adapter] Debug: Final Gemini Request = ${JSON.stringify(googleRequest, null, 2)}`);
     }

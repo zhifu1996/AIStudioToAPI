@@ -30,9 +30,11 @@ A tool that wraps Google AI Studio web interface to provide OpenAI API, Gemini A
    npm run setup-auth
    ```
 
+   For auto-fill and non-interactive examples, see the [Account Auto-fill](#-account-auto-fill) section.
+
    This script will:
    - Automatically download the Camoufox browser (a privacy-focused Firefox fork)
-   - Launch the browser and navigate to AI Studio automatically
+   - Launch the browser, open AI Studio, and guide you through manual login
    - Save your authentication credentials locally (auth files are stored in `/configs/auth`)
 
    > 💡 **Tip:** If downloading the Camoufox browser fails or takes too long, you can manually download it from [here](https://github.com/daijro/camoufox/releases/tag/v135.0.1-beta.24), and set the environment variable `CAMOUFOX_EXECUTABLE_PATH` to the path of the browser executable (both absolute and relative paths are supported).
@@ -170,6 +172,9 @@ If you need to access via a domain name or want unified management at the revers
 
 ### 🐾 Claw Cloud Run Deployment
 
+> ℹ **Claw Cloud Run announcement:** Claw Cloud Run has announced that it will discontinue its product and related services. All services will be discontinued on **May 11, 2026, 00:00 UTC**; export or back up your data before then. See the official announcement for details:
+> [Announcement](https://question.run.claw.cloud/questions/10010000000003261)
+
 Deploy directly on Claw Cloud Run, a fully managed container platform.
 
 > 📖 For detailed deployment instructions, see: [Deploy on Claw Cloud Run](docs/en/claw-cloud-run.md)
@@ -189,6 +194,7 @@ This endpoint is processed and then forwarded to the official Gemini API format 
 
 - `GET /v1/models`: List models.
 - `POST /v1/chat/completions`: Chat completion and image generation, supports non-streaming, real streaming, and fake streaming.
+- `POST /v1/embeddings`: Generate text embedding vectors.
 - `POST /v1/responses`: OpenAI Responses API compatible endpoint for conversation generation, does not support image generation, and supports non-streaming, real streaming, and fake streaming.
 - `POST /v1/responses/input_tokens`: Count input tokens for an OpenAI Responses API request.
 
@@ -199,6 +205,7 @@ This endpoint is forwarded to the official Gemini API format endpoint.
 - `GET /v1beta/models`: List available Gemini models.
 - `POST /v1beta/models/{model_name}:generateContent`: Generate content, images, and speech.
 - `POST /v1beta/models/{model_name}:streamGenerateContent`: Stream content, image, and speech generation, supports real and fake streaming.
+- `POST /v1beta/models/{model_name}:embedContent`: Generate a single text embedding vector.
 - `POST /v1beta/models/{model_name}:batchEmbedContents`: Batch generate text embedding vectors.
 - `POST /v1beta/models/{model_name}:predict`: Imagen series models image generation.
 
@@ -211,6 +218,18 @@ This endpoint forwards requests to the official Gemini API format endpoint.
 - `POST /v1/messages/count_tokens`: Count tokens in the messages.
 
 > 📖 For detailed API usage examples, see: [API Usage Examples](docs/en/api-examples.md)
+
+## 🖥️ Recommended Frontend: AMC WebUI
+
+[AMC WebUI](https://github.com/yeahhe365/AMC-WebUI) is a Local-First Gemini workflow WebUI with multimodal chat, Canvas, file processing, realtime search, code execution, and advanced reasoning. It already supports AIStudioToAPI as a third-party Gemini-compatible backend and can be used as a graphical frontend for this project.
+
+Online demo: [https://all-model-chat.pages.dev](https://all-model-chat.pages.dev)
+
+Usage:
+
+- Deploy and start AIStudioToAPI first, and make sure the Gemini native API endpoint is reachable, for example `http://localhost:7860/v1beta`.
+- In AMC WebUI, go to **Settings -> API Configuration**, enable "Custom API Configuration", and set the Gemini-compatible Base URL to AIStudioToAPI's `/v1beta` endpoint.
+- The API Key configured in AMC WebUI should match one of the `API_KEYS` configured for AIStudioToAPI.
 
 ## 🧰 Configuration
 
@@ -239,9 +258,10 @@ This endpoint forwards requests to the official Gemini API format endpoint.
 | :------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------- |
 | `INITIAL_AUTH_INDEX`            | Initial authentication index to use on startup.                                                                                                                                                                                                                       | `0`       |
 | `ENABLE_AUTH_UPDATE`            | Whether to enable automatic auth credential updates. Defaults to enabled. The auth file will be automatically updated upon successful login/account switch and every 24 hours. Set to `false` to disable.                                                             | `true`    |
-| `ENABLE_USAGE_STATS`            | Whether to enable request usage statistics. Defaults to enabled. Set to `false` to skip loading local stats, skip writing stats, and make `/api/usage-stats` return an empty payload.                                                                                 | `true`    |
 | `MAX_RETRIES`                   | Maximum number of retries for failed requests (only effective for fake streaming and non-streaming).                                                                                                                                                                  | `3`       |
 | `RETRY_DELAY`                   | Delay between retries in milliseconds.                                                                                                                                                                                                                                | `2000`    |
+| `STREAM_TIMEOUT_MS`             | Timeout between real streaming chunks, in milliseconds. Maximum: `300000`.                                                                                                                                                                                            | `60000`   |
+| `FAKE_STREAM_TIMEOUT_MS`        | Timeout for fake streaming / non-streaming buffered responses, in milliseconds. Maximum: `300000`.                                                                                                                                                                    | `300000`  |
 | `SWITCH_ON_USES`                | Number of requests before automatically switching accounts (`0` to disable).                                                                                                                                                                                          | `40`      |
 | `FAILURE_THRESHOLD`             | Number of consecutive failures before switching accounts (`0` to disable).                                                                                                                                                                                            | `3`       |
 | `IMMEDIATE_SWITCH_STATUS_CODES` | HTTP status codes that trigger immediate account switching (comma-separated, set to empty to disable).                                                                                                                                                                | `429,503` |
@@ -252,23 +272,29 @@ This endpoint forwards requests to the official Gemini API format endpoint.
 
 #### 🗒️ Other Configuration
 
-| Variable                   | Description                                                                                                                | Default       |
-| :------------------------- | :------------------------------------------------------------------------------------------------------------------------- | :------------ |
-| `STREAMING_MODE`           | Streaming mode. `real` for real streaming, `fake` for fake streaming.                                                      | `real`        |
-| `FORCE_THINKING`           | Force enable thinking mode for all requests.                                                                               | `false`       |
-| `FORCE_WEB_SEARCH`         | Force enable web search for all requests.                                                                                  | `false`       |
-| `FORCE_URL_CONTEXT`        | Force enable URL context for all requests.                                                                                 | `false`       |
-| `CAMOUFOX_EXECUTABLE_PATH` | Path to the Camoufox browser executable (supports both absolute and relative paths). Only required if manually downloaded. | Auto-detected |
+| Variable                    | Description                                                                                                                                                                           | Default       |
+| :-------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------ |
+| `STREAMING_MODE`            | Streaming mode. `real` for real streaming, `fake` for fake streaming.                                                                                                                 | `real`        |
+| `ENABLE_USAGE_STATS`        | Whether to enable request usage statistics. Defaults to enabled. Set to `false` to skip loading local stats, skip writing stats, and make `/api/usage-stats` return an empty payload. | `true`        |
+| `SAFETY_SETTINGS_THRESHOLD` | Safety settings level. Official docs: [Safety settings](https://ai.google.dev/gemini-api/docs/safety-settings)                                                                        | `OFF`         |
+| `FORCE_THINKING`            | Force enable thinking mode for all requests.                                                                                                                                          | `false`       |
+| `FORCE_WEB_SEARCH`          | Force enable web search for all requests.                                                                                                                                             | `false`       |
+| `FORCE_URL_CONTEXT`         | Force enable URL context for all requests.                                                                                                                                            | `false`       |
+| `CAMOUFOX_EXECUTABLE_PATH`  | Path to the Camoufox browser executable (supports both absolute and relative paths). Only required if manually downloaded.                                                            | Auto-detected |
 
 ### ⚡ Account Auto-fill
 
 To simplify the login process for multiple accounts, you can configure the `users.csv` file for auto-fill:
 
 1. Create `users.csv` in the project root.
-2. Format: `email,password` (one per line).
+2. Format: `email,password,recovery_email,totp_secret` (one per line, `recovery_email` and `totp_secret` are optional).
 3. Run `npm run setup-auth` and select the account when prompted.
 
 > 📖 For detailed configuration instructions, see: [Account Auto-fill Guide](docs/en/auto-fill-guide.md)
+>
+> 💡 **Tip**: For promptless runs, use `npm run setup-auth -- --non-interactive --account 1`, or pass `--email` / `--password` directly.
+>
+> 💡 **Batch add**: Use `npm run setup-auth-batch -- --headless` to add every account in `users.csv` sequentially.
 
 ### 🧠 Model List Configuration
 

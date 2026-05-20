@@ -193,7 +193,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <path d="M20 8h-2"></path>
                                         <path d="M20 18h-2"></path>
@@ -220,7 +220,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
                                     </svg>
@@ -266,7 +266,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="8.5" cy="7" r="4"></circle>
@@ -292,7 +292,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <line x1="18" y1="20" x2="18" y2="10"></line>
                                         <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -317,7 +317,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <path
                                             d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
@@ -344,7 +344,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
                                         <polyline points="2 17 12 22 22 17"></polyline>
@@ -366,7 +366,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                                     </svg>
@@ -386,7 +386,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
                                         <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
@@ -1098,6 +1098,89 @@
                         </div>
                     </div>
 
+                    <!-- System Settings Card -->
+                    <div class="status-card">
+                        <h3 class="card-title">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                style="margin-right: 8px; vertical-align: text-bottom"
+                            >
+                                <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                                <path d="M7 8h10"></path>
+                                <path d="M7 12h10"></path>
+                                <path d="M7 16h6"></path>
+                            </svg>
+                            {{ t("systemSettings") }}
+                        </h3>
+                        <div class="settings-switches">
+                            <div class="switch-container">
+                                <span class="label">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        style="margin-right: 6px; vertical-align: middle"
+                                    >
+                                        <path d="M21 12a9 9 0 1 1-9-9"></path>
+                                        <path d="M21 3v9h-9"></path>
+                                    </svg>
+                                    <span>
+                                        {{ t("checkUpdate") }}
+                                        <EnvVarTooltip env-var="CHECK_UPDATE" doc-section="app-config" />
+                                    </span>
+                                </span>
+                                <el-switch
+                                    v-model="state.checkUpdateEnabled"
+                                    :width="50"
+                                    :before-change="handleCheckUpdateBeforeChange"
+                                />
+                            </div>
+                            <div class="switch-container">
+                                <span class="label">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        style="margin-right: 6px; vertical-align: middle"
+                                    >
+                                        <path d="M12 3v18"></path>
+                                        <path d="M17 8l-5-5-5 5"></path>
+                                        <path d="M17 16l-5 5-5-5"></path>
+                                    </svg>
+                                    <span>
+                                        {{ t("enableAuthUpdate") }}
+                                        <EnvVarTooltip env-var="ENABLE_AUTH_UPDATE" doc-section="proxy-config" />
+                                    </span>
+                                </span>
+                                <el-switch
+                                    v-model="state.enableAuthUpdateEnabled"
+                                    :width="50"
+                                    :before-change="handleEnableAuthUpdateBeforeChange"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Log Settings Card -->
                     <div class="status-card">
                         <h3 class="card-title">
@@ -1134,7 +1217,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <line x1="8" y1="6" x2="21" y2="6"></line>
                                         <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -1169,7 +1252,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                                         <line x1="8" y1="21" x2="16" y2="21"></line>
@@ -1228,7 +1311,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <circle cx="12" cy="12" r="5"></circle>
                                         <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -1260,7 +1343,7 @@
                                         stroke-width="2"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        style="margin-right: 6px"
+                                        style="margin-right: 6px; vertical-align: middle"
                                     >
                                         <circle cx="12" cy="12" r="10"></circle>
                                         <line x1="2" y1="12" x2="22" y2="12"></line>
@@ -1411,6 +1494,41 @@
                                     :before-change="handleForceUrlContextBeforeChange"
                                 />
                             </div>
+                            <div class="switch-container">
+                                <span class="label">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        style="margin-right: 6px; vertical-align: middle"
+                                    >
+                                        <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"></path>
+                                        <path d="M9 12h6"></path>
+                                    </svg>
+                                    <span>
+                                        {{ t("safetySettingsThreshold") }}
+                                        <EnvVarTooltip env-var="SAFETY_SETTINGS_THRESHOLD" doc-section="other-config" />
+                                    </span>
+                                </span>
+                                <el-select
+                                    v-model="state.safetySettingsThreshold"
+                                    style="width: 150px"
+                                    @change="handleSafetySettingsThresholdChange"
+                                >
+                                    <el-option
+                                        v-for="option in safetySettingsThresholdOptions"
+                                        :key="option.value"
+                                        :label="t(option.label)"
+                                        :value="option.value"
+                                    />
+                                </el-select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1423,6 +1541,61 @@
                         <h1>{{ t("usageStats") }}</h1>
                     </div>
                     <div class="page-meta">
+                        <input
+                            ref="usageStatsImportInput"
+                            type="file"
+                            style="display: none"
+                            accept=".jsonl"
+                            @change="handleUsageStatsImport"
+                        />
+                        <button
+                            class="meta-chip stats-download-button"
+                            type="button"
+                            :title="t('importUsageStats')"
+                            :aria-label="t('importUsageStats')"
+                            :disabled="isUsageStatsTransferBusy"
+                            @click="triggerUsageStatsImport"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </button>
+                        <button
+                            class="meta-chip stats-download-button"
+                            type="button"
+                            :title="t('exportUsageStats')"
+                            :aria-label="t('exportUsageStats')"
+                            :disabled="isUsageStatsTransferBusy"
+                            @click="downloadUsageStats"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </button>
                         <span class="meta-chip">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -1461,7 +1634,7 @@
                             </svg>
                             <span style="opacity: 0.8; margin-right: 4px">{{ t("uptime") }}:</span>
                             <span style="font-weight: 600; font-family: monospace">{{
-                                formatUptime(statsState.summary.uptimeSeconds)
+                                formatStatsUptime(statsState.startedAt, statsState.summary.uptimeSeconds)
                             }}</span>
                         </span>
                     </div>
@@ -2597,7 +2770,11 @@ import EnvVarTooltip from "../components/EnvVarTooltip.vue";
 
 const router = useRouter();
 const fileInput = ref(null);
+const usageStatsImportInput = ref(null);
 const activeTab = ref("home");
+const isDownloadingUsageStats = ref(false);
+const isImportingUsageStats = ref(false);
+const isUsageStatsTransferBusy = computed(() => isDownloadingUsageStats.value || isImportingUsageStats.value);
 
 // Create reactive version counter
 const langVersion = ref(0);
@@ -3223,6 +3400,11 @@ const formatUptime = seconds => {
     return parts.join(" ");
 };
 
+const formatStatsUptime = (startedAt, seconds) => {
+    if (!startedAt) return "-";
+    return formatUptime(seconds);
+};
+
 const formatAccount = (authIndex, accountName) => {
     if (authIndex === null || authIndex === undefined) {
         return accountName || "-";
@@ -3465,9 +3647,11 @@ const state = reactive({
     activeContextsCount: 0,
     apiKeySource: "",
     browserConnected: false,
+    checkUpdateEnabled: true,
     currentAuthIndex: -1,
     currentLang: I18n.getLang(),
     debugModeEnabled: false,
+    enableAuthUpdateEnabled: true,
     failureCount: 0,
     floatingActionsExpanded: false,
     forceThinkingEnabled: false,
@@ -3485,12 +3669,25 @@ const state = reactive({
     maxContexts: 1,
     maxRetries: 3,
     releaseUrl: null,
+    safetySettingsThreshold: "OFF",
     selectedAccounts: new Set(), // Selected account indices
     serviceConnected: false,
     streamingModeReal: false,
     // theme: handled by useTheme
     usageCount: 0,
 });
+
+const safetySettingsThresholdOptions = [
+    { label: "safetySettingsThreshold.OFF", value: "OFF" },
+    {
+        label: "safetySettingsThreshold.HARM_BLOCK_THRESHOLD_UNSPECIFIED",
+        value: "HARM_BLOCK_THRESHOLD_UNSPECIFIED",
+    },
+    { label: "safetySettingsThreshold.BLOCK_LOW_AND_ABOVE", value: "BLOCK_LOW_AND_ABOVE" },
+    { label: "safetySettingsThreshold.BLOCK_MEDIUM_AND_ABOVE", value: "BLOCK_MEDIUM_AND_ABOVE" },
+    { label: "safetySettingsThreshold.BLOCK_ONLY_HIGH", value: "BLOCK_ONLY_HIGH" },
+    { label: "safetySettingsThreshold.BLOCK_NONE", value: "BLOCK_NONE" },
+];
 
 const browserConnectedClass = computed(() => {
     if (state.isSystemBusy) {
@@ -3945,6 +4142,9 @@ const handleForceUrlContextBeforeChange = () =>
     handleSettingChange("/api/settings/force-url-context", "forceUrlContext");
 
 const handleForceWebSearchBeforeChange = () => handleSettingChange("/api/settings/force-web-search", "forceWebSearch");
+const handleCheckUpdateBeforeChange = () => handleSettingChange("/api/settings/check-update", "checkUpdate");
+const handleEnableAuthUpdateBeforeChange = () =>
+    handleSettingChange("/api/settings/enable-auth-update", "enableAuthUpdate");
 
 // Handle change specifically for Select component which might trigger logic differently
 const handleStatsDebugChange = val => {
@@ -3975,6 +4175,35 @@ const handleLogMaxCountChange = val => {
         .catch(err => {
             ElMessage.error(t("settingFailed", { message: err.message || err }));
         });
+};
+
+const handleSafetySettingsThresholdChange = async val => {
+    if (!val) return;
+
+    try {
+        const res = await fetch("/api/settings/safety-settings-threshold", {
+            body: JSON.stringify({ value: val }),
+            headers: { "Content-Type": "application/json" },
+            method: "PUT",
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            ElMessage.success(
+                t(data.message, {
+                    setting: t("safetySettingsThreshold"),
+                    value: t(`safetySettingsThreshold.${val}`),
+                })
+            );
+            updateContent();
+        } else {
+            ElMessage.error(t(data.message || "settingFailed", { message: data.error || "" }));
+            updateContent();
+        }
+    } catch (err) {
+        ElMessage.error(t("settingFailed", { message: err.message || err }));
+        updateContent();
+    }
 };
 
 const handleLanguageChange = lang => {
@@ -4149,7 +4378,9 @@ const updateStatus = data => {
     };
 
     state.isUpdating = true;
+    state.checkUpdateEnabled = isEnabled(data.status.checkUpdate);
     state.streamingModeReal = data.status.streamingMode === "real";
+    state.enableAuthUpdateEnabled = isEnabled(data.status.enableAuthUpdate);
     state.forceThinkingEnabled = isEnabled(data.status.forceThinking);
     state.forceWebSearchEnabled = isEnabled(data.status.forceWebSearch);
     state.forceUrlContextEnabled = isEnabled(data.status.forceUrlContext);
@@ -4159,6 +4390,7 @@ const updateStatus = data => {
     state.activeContextsCount = data.status.activeContextsCount || 0;
     state.maxContexts = data.status.maxContexts ?? 1;
     state.maxRetries = data.status.maxRetries ?? 3;
+    state.safetySettingsThreshold = data.status.safetySettingsThreshold || "OFF";
 
     const validIndices = new Set(state.accountDetails.map(acc => acc.index));
     for (const idx of state.selectedAccounts) {
@@ -4511,11 +4743,7 @@ const downloadAccountByIndex = accountIndex => {
     window.location.href = `/api/files/auth-${accountIndex}.json`;
 };
 
-// Download current logs
-const downloadCurrentLogs = () => {
-    if (!state.logs) return;
-
-    const blob = new Blob([state.logs], { type: "text/plain" });
+const formatDownloadTimestamp = () => {
     const now = new Date();
     const YYYY = now.getFullYear();
     const MM = String(now.getMonth() + 1).padStart(2, "0");
@@ -4524,7 +4752,150 @@ const downloadCurrentLogs = () => {
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
 
-    const filename = `AIStudioProxy_${YYYY}-${MM}-${DD}_${HH}${mm}${ss}_${state.logCount}.log`;
+    return `${YYYY}-${MM}-${DD}_${HH}${mm}${ss}`;
+};
+
+const readFileAsText = file =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error(t("fileReadFailed")));
+        reader.readAsText(file);
+    });
+
+const triggerUsageStatsImport = () => {
+    if (isUsageStatsTransferBusy.value) return;
+
+    ElMessageBox.confirm(t("usageStatsImportConfirm"), t("warningTitle"), {
+        cancelButtonText: t("cancel"),
+        confirmButtonText: t("ok"),
+        lockScroll: false,
+        type: "warning",
+    })
+        .then(() => usageStatsImportInput.value?.click())
+        .catch(e => {
+            if (e !== "cancel") {
+                console.error(e);
+            }
+        });
+};
+
+const handleUsageStatsImport = async event => {
+    const [file] = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!file) return;
+    if (isUsageStatsTransferBusy.value) return;
+
+    if (!file.name.toLowerCase().endsWith(".jsonl")) {
+        ElMessage.error(t("usageStatsImportJsonlOnly"));
+        return;
+    }
+
+    isImportingUsageStats.value = true;
+    try {
+        const content = await readFileAsText(file);
+        const res = await fetch("/api/usage-stats/import", {
+            body: JSON.stringify({ content, filename: file.name }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+        });
+
+        if (res.redirected) {
+            window.location.href = res.url;
+            return;
+        }
+        if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            showUsageStatsImportNotification({
+                message: t(data.message || "usageStatsImportFailed", { error: data.error || `HTTP ${res.status}` }),
+                title: t("usageStatsImportResult"),
+                type: "error",
+            });
+            return;
+        }
+
+        showUsageStatsImportNotification({
+            message: t("usageStatsImportSuccess", data),
+            title: t("usageStatsImportResult"),
+            type: "success",
+        });
+        await fetchUsageStats();
+    } catch (error) {
+        showUsageStatsImportNotification({
+            message: t("usageStatsImportFailed", { error: error.message }),
+            title: t("usageStatsImportResult"),
+            type: "error",
+        });
+    } finally {
+        isImportingUsageStats.value = false;
+    }
+};
+
+const showUsageStatsImportNotification = ({ message, title, type }) => {
+    ElNotification({
+        dangerouslyUseHTMLString: true,
+        duration: 0,
+        message: `<div style="max-height: 50vh; overflow-y: auto; word-break: break-word;">${escapeHtml(message)}</div>`,
+        position: "top-right",
+        title,
+        type,
+    });
+};
+
+// Download persisted usage stats JSONL
+const downloadUsageStats = async () => {
+    if (isUsageStatsTransferBusy.value) return;
+    isDownloadingUsageStats.value = true;
+
+    try {
+        const res = await fetch("/api/usage-stats/download?check=1");
+        if (res.redirected) {
+            window.location.href = res.url;
+            return;
+        }
+        if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+        if (!res.ok) {
+            let message = "usageStatsDownloadFailed";
+            try {
+                const data = await res.json();
+                message = data.message || message;
+                ElMessage.error(t(message, { error: data.error || `HTTP ${res.status}` }));
+                return;
+            } catch {
+                // Ignore non-JSON error responses.
+            }
+            ElMessage.error(t(message, { error: `HTTP ${res.status}` }));
+            return;
+        }
+
+        const filename = `AIStudioToAPI_usage-stats_${formatDownloadTimestamp()}.jsonl`;
+        const a = document.createElement("a");
+        a.href = "/api/usage-stats/download";
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } catch (error) {
+        ElMessage.error(t("usageStatsDownloadFailed", { error: error.message }));
+    } finally {
+        isDownloadingUsageStats.value = false;
+    }
+};
+
+// Download current logs
+const downloadCurrentLogs = () => {
+    if (!state.logs) return;
+
+    const blob = new Blob([state.logs], { type: "text/plain" });
+    const filename = `AIStudioToAPI_${formatDownloadTimestamp()}_${state.logCount}.log`;
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -5509,6 +5880,20 @@ watchEffect(() => {
     &:hover {
         border-color: @primary-color;
         color: @primary-color;
+    }
+}
+
+.stats-download-button {
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+
+    &:disabled {
+        cursor: wait;
+        opacity: 0.65;
     }
 }
 
